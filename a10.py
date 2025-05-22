@@ -8,11 +8,15 @@ from match import match
 from typing import List, Callable, Tuple, Any, Match
 
 
+
+
 def get_page_html(title: str) -> str:
     """Gets html of a wikipedia page
 
+
     Args:
         title - title of the page
+
 
     Returns:
         html of the page
@@ -21,11 +25,15 @@ def get_page_html(title: str) -> str:
     return WikipediaPage(results[0]).html()
 
 
+
+
 def get_first_infobox_text(html: str) -> str:
     """Gets first infobox html from a Wikipedia page (summary box)
 
+
     Args:
         html - the full html of the page
+
 
     Returns:
         html of just the first infobox
@@ -33,16 +41,21 @@ def get_first_infobox_text(html: str) -> str:
     soup = BeautifulSoup(html, "html.parser")
     results = soup.find_all(class_="infobox")
 
+
     if not results:
         raise LookupError("Page has no infobox")
     return results[0].text
 
 
+
+
 def clean_text(text: str) -> str:
     """Cleans given text removing non-ASCII characters and duplicate spaces & newlines
 
+
     Args:
         text - text to clean
+
 
     Returns:
         cleaned text
@@ -53,6 +66,8 @@ def clean_text(text: str) -> str:
     return no_dup_newlines
 
 
+
+
 def get_match(
     text: str,
     pattern: str,
@@ -60,10 +75,12 @@ def get_match(
 ) -> Match:
     """Finds regex matches for a pattern
 
+
     Args:
         text - text to search within
         pattern - pattern to attempt to find within text
         error_text - text to display if pattern fails to match
+
 
     Returns:
         text that matches
@@ -71,16 +88,21 @@ def get_match(
     p = re.compile(pattern, re.DOTALL | re.IGNORECASE)
     match = p.search(text)
 
+
     if not match:
         raise AttributeError(error_text)
     return match
 
 
+
+
 def get_polar_radius(planet_name: str) -> str:
     """Gets the radius of the given planet
 
+
     Args:
         planet_name - name of the planet to get radius of
+
 
     Returns:
         radius of the given planet
@@ -89,15 +111,19 @@ def get_polar_radius(planet_name: str) -> str:
     pattern = r"(?:Polar radius.*?)(?: ?[\d]+ )?(?P<radius>[\d,.]+)(?:.*?)km"
     error_text = "Page infobox has no polar radius information"
     match = get_match(infobox_text, pattern, error_text)
+    radiusInfo = f"the polar radius of {planet_name} is {match.group('radius')} km"
+    return radiusInfo
 
-    return match.group("radius")
+
 
 
 def get_birth_date(name: str) -> str:
     """Gets birth date of the given person
 
+
     Args:
         name - name of the person
+
 
     Returns:
         birth date of the given person
@@ -108,20 +134,66 @@ def get_birth_date(name: str) -> str:
         "Page infobox has no birth information (at least none in xxxx-xx-xx format)"
     )
     match = get_match(infobox_text, pattern, error_text)
+    birthInfo = f"{name} was born on this date: {match.group('birth')}"
+    return birthInfo
 
-    return match.group("birth")
+
+def get_population_size(place: str) -> str:
+    """Gets the population size of the given place
+   
+    Args:
+        place - name of the place
+       
+    Returns:
+        population size of the given place
+    """
+    infobox_text = clean_text(get_first_infobox_text(get_page_html(place)))
+    print(infobox_text)
+    pattern = r"Population\D+\d{4}[)\[\]\d]*\D+(?P<Population>[\d,]+)"
+    error_text = (
+        "Page infobox has no population information"
+    )
+    match = get_match(infobox_text, pattern, error_text)
+    popInfo = f"{place} has a population of {match.group('Population')}"
+    return popInfo
+   
+def get_establish_year(thing: str) -> str:
+    infobox_text = clean_text(get_first_infobox_text(get_page_html(thing)))
+    print(infobox_text)
+    pattern = r"Established[\n\s]*(?P<time>[\d\w\s,]+)[;\(]+"
+    error_text = (
+        "Page infobox has no establishment information (at least not in the 'established' format)"
+    )
+    match = get_match(infobox_text, pattern, error_text)
+    estInfo = f"{thing} was established in {match.group('time')}"
+    return estInfo
 
 
+def get_ugrad_pop(school: str) -> str:
+    infobox_text = clean_text(get_first_infobox_text(get_page_html(school)))
+    print(infobox_text)
+    pattern = r"Undergraduates[\n\s]*(?P<Ugrad>[\d,]+)"
+    error_text = (
+        "Page infobox has no information on undergraduate population"
+    )
+    match = get_match(infobox_text, pattern, error_text)
+    ugradInfo = f"{school} has an undergraduate population of {match.group('Ugrad')}"
+    return ugradInfo
+   
 # below are a set of actions. Each takes a list argument and returns a list of answers
 # according to the action and the argument. It is important that each function returns a
 # list of the answer(s) and not just the answer itself.
 
 
+
+
 def birth_date(matches: List[str]) -> List[str]:
     """Returns birth date of named person in matches
 
+
     Args:
         matches - match from pattern of person's name to find birth date of
+
 
     Returns:
         birth date of named person
@@ -129,11 +201,15 @@ def birth_date(matches: List[str]) -> List[str]:
     return [get_birth_date(" ".join(matches))]
 
 
+
+
 def polar_radius(matches: List[str]) -> List[str]:
     """Returns polar radius of planet in matches
 
+
     Args:
         matches - match from pattern of planet to find polar radius of
+
 
     Returns:
         polar radius of planet
@@ -141,9 +217,23 @@ def polar_radius(matches: List[str]) -> List[str]:
     return [get_polar_radius(matches[0])]
 
 
+def population_size(matches: List[str]) -> List[str]:
+    return [get_population_size(matches[0])]
+
+
+def establish_year(matches: List[str]) -> List[str]:
+    return [get_establish_year(matches[0])]
+
+
+def ugrad_pop(matches: List[str]) -> List[str]:
+    return [get_ugrad_pop(matches[0])]
+
+
 # dummy argument is ignored and doesn't matter
 def bye_action(dummy: List[str]) -> None:
     raise KeyboardInterrupt
+
+
 
 
 # type aliases to make pa_list type more readable, could also have written:
@@ -151,13 +241,20 @@ def bye_action(dummy: List[str]) -> None:
 Pattern = List[str]
 Action = Callable[[List[str]], List[Any]]
 
+
 # The pattern-action list for the natural language query system. It must be declared
 # here, after all of the function definitions
 pa_list: List[Tuple[Pattern, Action]] = [
     ("when was % born".split(), birth_date),
     ("what is the polar radius of %".split(), polar_radius),
+    ("When was % established".split(), population_size),
+    ("what is the population of %".split(), population_size),
+    ("what year was % established".split(), establish_year),
+    ("what is the undergraduate population of %".split(), ugrad_pop),
     (["bye"], bye_action),
 ]
+
+
 
 
 def search_pa_list(src: List[str]) -> List[str]:
@@ -165,8 +262,10 @@ def search_pa_list(src: List[str]) -> List[str]:
     a match but has no answers it returns ["No answers"]. If it finds no match it
     returns ["I don't understand"].
 
+
     Args:
         source - a phrase represented as a list of words (strings)
+
 
     Returns:
         a list of answers. Will be ["I don't understand"] if it finds no matches and
@@ -178,13 +277,16 @@ def search_pa_list(src: List[str]) -> List[str]:
             answer = act(mat)
             return answer if answer else ["No answers"]
 
+
     return ["I don't understand"]
+
+
 
 
 def query_loop() -> None:
     """The simple query loop. The try/except structure is to catch Ctrl-C or Ctrl-D
     characters and exit gracefully"""
-    print("Welcome to the movie database!\n")
+    print("Welcome to the wikipedia database!\n")
     while True:
         try:
             print()
@@ -193,11 +295,20 @@ def query_loop() -> None:
             for ans in answers:
                 print(ans)
 
+
         except (KeyboardInterrupt, EOFError):
             break
+        except(AttributeError):
+            print("Page does not match pattern!")
+
 
     print("\nSo long!\n")
 
 
+
+
 # uncomment the next line once you've implemented everything are ready to try it out
 query_loop()
+
+
+
